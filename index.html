@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guess My Country</title>
+<style>
+:root{--bg:#080d19;--panel:#11192b;--card:#19233a;--line:#2b3958;--text:#f4f7ff;--muted:#9eabc5;--accent:#7182ff;--good:#35d58a;--bad:#ff6175;--gold:#ffd35a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#15213b 0,#080d19 48%);color:var(--text);font:16px system-ui,Arial,sans-serif;min-height:100vh}
+button,input,select{font:inherit}button{cursor:pointer}.screen{display:none;min-height:100vh;padding:24px}.screen.active{display:flex;flex-direction:column}
+.wrap{width:min(1050px,100%);margin:auto}.center{align-items:center;justify-content:center;text-align:center}.brand{font-size:clamp(38px,7vw,72px);font-weight:900}.muted{color:var(--muted)}.panel{background:rgba(17,25,43,.96);border:1px solid var(--line);border-radius:22px;padding:24px;width:min(560px,100%);box-shadow:0 18px 60px #0005}
+.row{display:flex;gap:10px;align-items:center}.row>*{min-width:0}.grow{flex:1}label{display:block;text-align:left;color:var(--muted);font-size:14px;margin:12px 0 7px}
+input,select{width:100%;background:#0b1323;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:13px;outline:none}input:focus,select:focus{border-color:var(--accent)}
+.btn{border:0;border-radius:12px;padding:13px 16px;background:var(--accent);color:white;font-weight:800}.btn.secondary{background:#26324e}.btn.danger{background:#8f2939}.btn:disabled{opacity:.45;cursor:not-allowed}
+h1,h2,h3,p{margin-top:0}.top{width:min(1050px,100%);margin:0 auto 14px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.room{font-weight:900;letter-spacing:2px;background:#19233a;border:1px solid var(--line);padding:10px 14px;border-radius:12px}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.player{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.status{font-size:12px;color:var(--muted);margin-top:5px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.actions .btn{flex:1}
+.board{display:grid;grid-template-columns:280px 1fr;gap:14px;width:min(1100px,100%);margin:auto;flex:1}
+.card{background:rgba(17,25,43,.97);border:1px solid var(--line);border-radius:18px;padding:18px}.targets{display:flex;flex-direction:column;gap:8px}.target{background:var(--card);border:1px solid transparent;border-radius:12px;padding:13px;text-align:left}.target.selected{border-color:var(--accent)}.target.done{opacity:.45}
+.timer{font-size:38px;font-weight:900}.timer.warn{color:var(--gold)}.timer.danger{color:var(--bad);animation:pulse .6s infinite alternate}@keyframes pulse{to{transform:scale(1.08)}}
+.word{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin:28px 0}.letter{width:40px;height:52px;border-radius:8px;background:#202d49;border-bottom:3px solid var(--accent);display:grid;place-items:center;font-size:24px;font-weight:900}.space{width:18px;background:transparent;border:0}
+.feedback{min-height:48px;padding:13px;border-radius:12px;margin-top:12px;display:none;text-align:center;font-weight:800}.feedback.show{display:block}.correct{background:#123d2e;color:#67f0ad;animation:pop .4s}.wrong{background:#4a1e2a;color:#ff8b99;animation:shake .35s}.timeout{background:#463918;color:#ffd96d}@keyframes pop{50%{transform:scale(1.04)}}@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.suggest{position:relative}.suggestions{position:absolute;z-index:5;left:0;right:0;top:100%;background:#111a2d;border:1px solid var(--line);border-radius:12px;overflow:hidden}.suggestion{padding:11px 13px;text-align:left}.suggestion:hover{background:#263451}.hidden{display:none}
+.rank{display:grid;grid-template-columns:70px 1fr auto;gap:12px;align-items:center;padding:13px;background:var(--card);border-radius:12px;margin-top:7px}.place{font-size:22px;font-weight:900}.shopgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.shopitem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px}.shopitem button{margin-top:10px;width:100%}.pill{display:inline-block;background:#26324e;border-radius:999px;padding:5px 9px;font-size:12px;color:var(--muted)}
+@media(max-width:760px){.board{grid-template-columns:1fr}.screen{padding:14px}.letter{width:34px;height:45px;font-size:20px}.top{margin-bottom:10px}}
+
+.watermark{
+  position:fixed;
+  left:50%;
+  bottom:10px;
+  transform:translateX(-50%);
+  z-index:9999;
+  color:#8f9bb5;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.4px;
+  opacity:.72;
+  pointer-events:none;
+  user-select:none;
+  text-shadow:0 1px 3px #0008;
+}
+
+</style>
+</head>
+<body>
+<div class="watermark">Follow @nexvrly</div>
+
+<section id="home" class="screen active center">
+<div class="brand">🌍 Guess My Country</div>
+<p class="muted">Secret countries. Fast guesses. First to finish wins.</p>
+<div class="panel">
+<label>Your name</label><input id="name" maxlength="18" placeholder="Player name">
+<label>Mode</label>
+<select id="mode"><option value="online">Online / LAN multiplayer</option><option value="solo">Local pass-and-play</option></select>
+<div class="actions">
+<button class="btn" id="createBtn">Create Room</button>
+<button class="btn secondary" id="joinBtn">Join Room</button>
+</div>
+<div id="joinArea" class="hidden">
+<label>Room code</label><input id="roomCode" maxlength="6" placeholder="ABC123">
+<button class="btn" id="joinConfirm">Join</button>
+</div>
+<p id="homeMsg" class="muted"></p>
+</div>
+</section>
+
+<section id="lobby" class="screen">
+<div class="top"><div><h2>🌍 Lobby</h2><div class="muted">Share this room code with your friends.</div></div><div class="room" id="roomLabel"></div></div>
+<div class="wrap">
+<div class="card"><h3>Players</h3><div class="players" id="lobbyPlayers"></div>
+<div class="actions"><button class="btn" id="readyBtn">Ready</button><button class="btn" id="startBtn">Start Game</button><button class="btn secondary" id="leaveBtn">Leave</button></div>
+<p id="lobbyMsg" class="muted"></p></div>
+</div>
+</section>
+
+<section id="pick" class="screen center">
+<div class="panel">
+<h2 id="pickTitle">Choose your secret country</h2>
+<p class="muted">Type a real country. Fictional places are rejected.</p>
+<div class="suggest">
+<input id="countryInput" autocomplete="off" placeholder="Start typing...">
+<div id="suggestions" class="suggestions hidden"></div>
+</div>
+<button class="btn" id="lockCountry">🔒 Lock Country</button>
+<p id="pickMsg" class="muted"></p>
+</div>
+</section>
+
+<section id="game" class="screen">
+<div class="top">
+<div><h2>🌍 Guess My Country</h2><div id="turnText" class="muted"></div></div>
+<div class="timer" id="timer">15</div>
+</div>
+<div class="board">
+<div class="card"><h3>Players</h3><div class="targets" id="targets"></div></div>
+<div class="card">
+<h2 id="targetTitle">Choose a player</h2>
+<div class="word" id="word"></div>
+<label>Guess a letter or the whole country</label>
+<input id="guess" maxlength="30" autocomplete="off" placeholder="Type your guess...">
+<div class="actions"><button class="btn" id="submitGuess">Submit Guess</button></div>
+<div id="feedback" class="feedback" aria-live="polite"></div>
+</div>
+</div>
+</section>
+
+<section id="results" class="screen center">
+<div class="panel">
+<div style="font-size:64px">🏆</div><h1>Game Complete</h1><p class="muted">Final placement</p>
+<div id="ranking"></div>
+<div class="actions"><button class="btn" id="shopBtn">Open Shop</button><button class="btn secondary" id="againBtn">Back to Lobby</button></div>
+</div>
+</section>
+
+<section id="shop" class="screen">
+<div class="top"><div><h2>✨ Customization</h2><div class="muted">Spend points on your profile.</div></div><div class="pill" id="pointsLabel"></div></div>
+<div class="wrap">
+<div class="card"><h3>Nameplates</h3><div class="shopgrid" id="plates"></div></div>
+<div class="card" style="margin-top:14px"><h3>Fonts</h3><div class="shopgrid" id="fonts"></div></div>
+<div class="card" style="margin-top:14px"><h3>Font colors</h3><div class="shopgrid" id="fontColors"></div></div>
+<button class="btn secondary" id="shopBack" style="margin-top:14px">Back</button>
+</div>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let state = {room:null, me:null, countries:[], selected:null, timer:15};
+const $=id=>document.getElementById(id);
+const screens=["home","lobby","pick","game","results","shop"];
+function show(id){screens.forEach(x=>$(x).classList.toggle("active",x===id));}
+function msg(id,t){$(id).textContent=t}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+$("joinBtn").onclick=()=> $("joinArea").classList.toggle("hidden");
+$("createBtn").onclick=()=>createOrJoin(true);
+$("joinConfirm").onclick=()=>createOrJoin(false);
+function createOrJoin(create){
+ const name=$("name").value.trim()||"Player";
+ const mode=$("mode").value;
+ if(create) socket.emit("createRoom",{name,mode});
+ else socket.emit("joinRoom",{name,code:$("roomCode").value.trim().toUpperCase()});
+}
+socket.on("roomState",s=>{
+ state.room=s.room; state.me=s.me; state.countries=s.countries||[];
+ $("roomLabel").textContent=s.room.code;
+ renderLobby(s);
+ if(s.phase==="lobby") show("lobby");
+ if(s.phase==="picking") {
+   $("pickTitle").textContent=s.myPickNeeded?`${s.me.name}, choose your secret country`:"Waiting for everyone to choose...";
+   $("countryInput").value=""; $("pickMsg").textContent=s.myPickNeeded?"":"You are locked in. Waiting...";
+   show("pick");
+ }
+ if(s.phase==="playing"){show("game");renderGame(s)}
+ if(s.phase==="finished"){show("results");renderResults(s)}
+});
+socket.on("errorMsg",e=>{msg("homeMsg",e);msg("lobbyMsg",e);msg("pickMsg",e)});
+$("readyBtn").onclick=()=>socket.emit("ready",{code:state.room.code});
+$("startBtn").onclick=()=>socket.emit("start",{code:state.room.code});
+$("leaveBtn").onclick=()=>{socket.emit("leave",{code:state.room.code});show("home")};
+
+$("countryInput").addEventListener("input",()=>{
+ const q=$("countryInput").value.trim().toLowerCase(), box=$("suggestions");
+ if(!q){box.classList.add("hidden");box.innerHTML="";return}
+ const hits=state.countries.filter(c=>c.toLowerCase().includes(q)).slice(0,8);
+ box.innerHTML=hits.map(c=>`<div class="suggestion" data-c="${esc(c)}">${esc(c)}</div>`).join("");
+ box.classList.toggle("hidden",hits.length===0);
+ box.querySelectorAll(".suggestion").forEach(x=>x.onclick=()=>{$("countryInput").value=x.dataset.c;box.classList.add("hidden")});
+});
+$("lockCountry").onclick=()=>socket.emit("pickCountry",{code:state.room.code,country:$("countryInput").value.trim()});
+function renderLobby(s){
+ $("lobbyPlayers").innerHTML=s.players.map(p=>`<div class="player"><strong>${esc(p.name)}</strong><div class="status">${p.ready?"READY":"NOT READY"}</div></div>`).join("");
+ $("startBtn").disabled=!s.isHost;
+}
+function renderGame(s){
+ $("turnText").textContent=`Turn: ${s.turnPlayerName}`;
+ $("timer").textContent=`⏱ ${s.timeLeft}`;
+ $("timer").className="timer "+(s.timeLeft<=5?"danger":s.timeLeft<=8?"warn":"");
+ $("targets").innerHTML=s.players.filter(p=>p.id!==s.me.id).map(p=>`
+ <button class="target ${p.discovered?"done":""} ${state.selected===p.id?"selected":""}" data-id="${p.id}" ${p.discovered?"disabled":""}>
+ <strong>${esc(p.name)}</strong><div class="status">${p.discovered?"Country discovered ✓":"Secret country"}</div></button>`).join("");
+ $("targets").querySelectorAll(".target").forEach(b=>b.onclick=()=>{state.selected=b.dataset.id;renderGame(s)});
+ if(state.selected){
+   const t=s.players.find(p=>p.id===state.selected);
+   $("targetTitle").textContent=`Guess ${esc(t.name)}'s country`;
+   $("word").innerHTML=(t.pattern||"").split("").map(ch=>ch===" "?"<div class='letter space'></div>":`<div class='letter'>${ch}</div>`).join("");
+ }else{$("targetTitle").textContent="Choose a player";$("word").innerHTML=""}
+}
+$("submitGuess").onclick=submitGuess;
+$("guess").onkeydown=e=>{if(e.key==="Enter")submitGuess()};
+function submitGuess(){
+ if(!state.selected){showFeedback("Choose a player first.","wrong");return}
+ const g=$("guess").value.trim(); if(!g)return;
+ socket.emit("guess",{code:state.room.code,targetId:state.selected,guess:g});
+ $("guess").value="";
+}
+socket.on("feedback",f=>showFeedback(f.text,f.type));
+function showFeedback(t,type){const x=$("feedback");x.className="feedback show "+type;x.textContent=t;clearTimeout(window.ft);window.ft=setTimeout(()=>x.className="feedback",1300)}
+socket.on("turn",{timeLeft,turnPlayerName}=>{});
+socket.on("gameTick",d=>{$("timer").textContent=`⏱ ${d.timeLeft}`;$("timer").className="timer "+(d.timeLeft<=5?"danger":d.timeLeft<=8?"warn":"")});
+function renderResults(s){
+ $("ranking").innerHTML=s.ranking.map(p=>`<div class="rank"><div class="place">${p.place===1?"🥇":p.place===2?"🥈":p.place===3?"🥉":p.place+"th"}</div><strong>${esc(p.name)}</strong><span>${p.points} pts</span></div>`).join("");
+}
+$("againBtn").onclick=()=>socket.emit("backLobby",{code:state.room.code});
+$("shopBtn").onclick=()=>{renderShop(state.room.shop);show("shop")};
+$("shopBack").onclick=()=>show("results");
+socket.on("shopState",shop=>{state.room.shop=shop;renderShop(shop)});
+function renderShop(shop){
+ $("pointsLabel").textContent=`⭐ ${shop.points} points`;
+ const sections=[["plates","plates"],["fonts","fonts"],["fontColors","colors"]];
+ sections.forEach(([id,key])=>{
+   $(id).innerHTML=shop[key].map(item=>`<div class="shopitem"><strong>${esc(item.name)}</strong><div class="status">${item.owned?"Owned":item.price+" points"}</div><button class="btn ${item.owned?"secondary":""}" ${item.owned?"disabled":""} data-buy="${key}:${item.id}">${item.owned?"Owned":"Buy"}</button></div>`).join("");
+   $(id).querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>{const [type,itemId]=b.dataset.buy.split(":");socket.emit("buy",{type,itemId})});
+ });
+}
+socket.on("disconnect",()=>msg("homeMsg","Disconnected from server. If you are hosting locally, check that server.js is running."));
+</script>
+</body>
+</html>
